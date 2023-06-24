@@ -4,7 +4,6 @@ import ErrorHandler from "../utils/errorHandler.js"
 import { catchAsynError } from "../middleware/catchAsyncError.js";
 
 export const isAuthenticated=catchAsynError(async(req,res,next)=>{
-    console.log(req.cookies);
     const {token}=req.cookies;
     if(!token){
         return next(new ErrorHandler("please logged in First",401))

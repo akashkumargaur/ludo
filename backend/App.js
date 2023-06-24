@@ -32,7 +32,7 @@ app.use("/app/v1",other)
 app.use(express.static(path.join(__dirname, "./backend/build")));
 
 app.get('/*', (req, res) => {
-        res.sendFile('index.html', { root: path.join(__dirname, 'build') });
+        res.sendFile('index.html', { root: path.join(__dirname, 'backend/build') });
 });
 // console.log(__dirname)
 // app.get('/*', (req, res) => {

@@ -12,7 +12,12 @@
 /LudoKing/build
 
 # misc
+/backend/config/config.env
 /LudoKing/.DS_Store
+/LudoKing/.env.local
+/LudoKing/.env.development.local
+/LudoKing/.env.test.local
+/LudoKing/.env.production.local
 
 
 npm-debug.log*

@@ -6,15 +6,17 @@ import { sendToken } from "../utils/sendToken.js";
 import { Challenge } from "../models/Challenge.js";
 import cloudinary from "cloudinary";
 import getDataUri from "../utils/dataUri.js";
+import unirest from "unirest";
 
+let randomOtp
 //for check register A new user
 export const checkregister = catchAsynError(async (req, res, next) => {
-  const {phone_number,username,referal_code} = req.body;
+  const {phone_number,username,refer_from} = req.body;
   if (!phone_number || !username ) {
     return next(new ErrorHandler("please enter phone number and username  ", 400));
   }
-  if(referal_code){
-    const refer = await User.findOne({referal_code});
+  if(refer_from){
+    const refer = await User.findOne({refer_from});
     if(!refer){
       return next(new ErrorHandler("Invalid referal code", 400));
     }
@@ -29,6 +31,20 @@ export const checkregister = catchAsynError(async (req, res, next) => {
   if (user) {
     return next(new ErrorHandler("phone number Exists", 409));
   }
+  randomOtp=Math.floor(Math.random() * 900000) + 100000;
+  var req = unirest("POST", "https://www.fast2sms.com/dev/bulkV2");
+    req.headers({
+      "authorization": "frP3LBTYVbHd6IpwFs4qXQegyMtiEZ0GUSxhNuvm2W89kCA71nS3phQERDxorfndtzH4XlygJvCwmZU0"
+    });
+    req.form({
+      "variables_values": randomOtp,
+      "route": "otp",
+      "numbers": phone_number,
+    });
+    
+    req.end(function (res) {
+      if (res.error) throw new Error(res.error);
+    });
 
 
   res.status(201).json({
@@ -36,7 +52,7 @@ export const checkregister = catchAsynError(async (req, res, next) => {
     stat:{
       username:username,
       phone_number:phone_number,
-      referal_code:referal_code,
+      refer_from:refer_from,
     },
     message: "user register check successfully",
   });
@@ -44,16 +60,12 @@ export const checkregister = catchAsynError(async (req, res, next) => {
 
 //for register A new user
 export const register = catchAsynError(async (req, res, next) => {
-  const { phone_number, username, referal_code,otp } = req.body;
-  console.log(req.body)
+  const { phone_number, username, refer_from,otp } = req.body;
   if (!phone_number || !username || !otp ) {
     return next(new ErrorHandler("please enter phone number and username", 400));
   }
-  if (otp!='000000') {
-    return next(new ErrorHandler("enter correct otp", 401));
-  }
-  if(referal_code!==''){
-    const refer = await User.findOne({referal_code});
+  if(refer_from!==''){
+    const refer = await User.findOne({refer_from});
     if(!refer){
       return next(new ErrorHandler("Invalid referal code", 400));
     }
@@ -64,18 +76,23 @@ export const register = catchAsynError(async (req, res, next) => {
       return next(new ErrorHandler("username allready taken", 400));
     }
   }
-  
   let user = await User.findOne({ phone_number });
   if (user) {
     return next(new ErrorHandler("phone number allready Exists", 409));
+  } 
+  if (otp!=randomOtp) {
+    return next(new ErrorHandler("enter correct otp", 401));
   }
+  // console.log('user')
+  // user =await User.create({
+  //   username,
+  //   phone_number,
+  // });
 
-  user = await User.create({
-    username,
-    phone_number,
-    referal_code,
-  });
-
+ user = await User.create({
+      username,
+      phone_number,
+    });
   await History.create({
     user:{
       user_id:user._id,
@@ -105,7 +122,7 @@ export const login = catchAsynError(async (req, res, next) => {
     return next(new ErrorHandler("User with this phone number not found", 401));
   }
 
-  if (otp!='000000') {
+  if (otp!=randomOtp) {
     return next(new ErrorHandler("enter correct otp", 401));
   }
   sendToken(res, user, `welcome back, ${user.username}`, 200);
@@ -124,6 +141,20 @@ export const checkLogin = catchAsynError(async (req, res, next) => {
   if (!user) {
     return next(new ErrorHandler("User with this phone number not found", 401));
   }
+  randomOtp=Math.floor(Math.random() * 900000) + 100000;
+  var req = unirest("POST", "https://www.fast2sms.com/dev/bulkV2");
+    req.headers({
+      "authorization": "frP3LBTYVbHd6IpwFs4qXQegyMtiEZ0GUSxhNuvm2W89kCA71nS3phQERDxorfndtzH4XlygJvCwmZU0"
+    });
+    req.form({
+      "variables_values": randomOtp,
+      "route": "otp",
+      "numbers": phone_number,
+    });
+    
+    req.end(function (res) {
+      if (res.error) throw new Error(res.error);
+    });
 
   res.status(201).json({
     success: true,
@@ -136,13 +167,14 @@ export const checkLogin = catchAsynError(async (req, res, next) => {
 
 // for log out
 export const logout = catchAsynError(async (req, res, next) => {
+
   res
     .status(201)
     .cookie("token", null, {
       expires: new Date(Date.now()),
       httpOnly: true,
       // secure:true,
-      sameSite: "none",
+      sameSite: "strict",
     })
     .json({
       success: true,
@@ -152,7 +184,6 @@ export const logout = catchAsynError(async (req, res, next) => {
 
 //for getting profile info
 export const getProfileInFo = catchAsynError(async (req, res, next) => { 
-  console.log(req.user._id)
   const user = await User.findById(req.user._id);
   res.status(201).json({
     success: true,
